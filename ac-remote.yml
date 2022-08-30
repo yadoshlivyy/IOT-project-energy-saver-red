@@ -31,15 +31,12 @@ captive_portal:
 # sets up the ble stack on the device and listens for available devices
 esp32_ble_tracker:
 
-#esp32_ble_beacon:
-#  type: iBeacon
-#  uuid: '3433306a-3066-4d5b-b051-c5ef5f9cb525'
-
 binary_sensor:
-  # Presence based on iBeacon UUID
+  # bluetooth presence sensor - presence is based on iBeacon UUID
   - platform: ble_presence
-    name: "Phone Tracker"
+    name: "Am I Home"
     id: phone_tracker
+    icon: "mdi:home"
     ibeacon_uuid: 'de98a2e9-db46-477b-8909-ddfd22c2fcff'
     ibeacon_major: 123
     ibeacon_minor: 456
@@ -51,6 +48,35 @@ binary_sensor:
             } else {
               id(off_button).press();
             }
+
+sensor:
+  # temperature and humidity sensor
+  - platform: dht
+    pin: GPIO16
+    model: DHT11
+    temperature:
+      name: "Room Temperature"
+      id: room_tmp
+      on_value_range:
+        # if tmp is above 27 and i'm home turn ac on
+        - above: 27.0
+          then:
+            - lambda: |-
+                if(id(phone_tracker).state) {
+                  id(on_button).press();
+                }
+        # if tmp is below 26 and i'm home turn ac off
+        - below: 26.0
+          then:
+            - lambda: |-
+                if(!id(phone_tracker).state) {
+                  id(on_button).press();
+                }
+    humidity:
+      name: "Room Humidity"
+      id: room_hmd
+    update_interval: 60s # update the sensor gui every minute
+    
     
 
 # receive incoming IR signals and dump them to log file
@@ -69,7 +95,8 @@ remote_transmitter:
 button:
   # button to turn on AC
   - platform: template
-    name: "Power On Button"
+    name: "AC On"
+    icon: "mdi:play"
     id: on_button
     on_press:
       - logger.log: "AC turned on :)"
@@ -84,7 +111,8 @@ button:
   
   # button to turn off AC
   - platform: template
-    name: "Power Off Button"
+    name: "AC Off"
+    icon: "mdi:pause-box-outline"
     id: off_button
     on_press:
       - logger.log: "AC turned off :)"
