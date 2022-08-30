@@ -9,7 +9,7 @@ esp32:
 # Enable logging
 logger:
 
-# Enable Home Assistant API
+# Enable Home Assistant API, use the key to configure connection between device and Home Assistant
 api:
   encryption:
     key: "1KMEt//8JQxaEtboIP50bbRrwcPWuKW7ux6aJUfaclE="
@@ -28,17 +28,30 @@ wifi:
 
 captive_portal:
 
-esp32_ble_tracker: # sets up the ble stack on the device and listens for available devices
+# sets up the ble stack on the device and listens for available devices
+esp32_ble_tracker:
+
+#esp32_ble_beacon:
+#  type: iBeacon
+#  uuid: '3433306a-3066-4d5b-b051-c5ef5f9cb525'
 
 binary_sensor:
-  # Presence based on BLE Service UUID
-  - platform: ble_presence
-    service_uuid: '11aa'
-    name: "ESP32 BLE Tracker Test Service 16 bit"
   # Presence based on iBeacon UUID
   - platform: ble_presence
-    ibeacon_uuid: '68586f1e-89c2-11eb-8dcd-0242ac130003'
-    name: "ESP32 BLE Tracker Test Service iBeacon"
+    name: "Phone Tracker"
+    id: phone_tracker
+    ibeacon_uuid: 'de98a2e9-db46-477b-8909-ddfd22c2fcff'
+    ibeacon_major: 123
+    ibeacon_minor: 456
+    on_state:
+      then:
+        - lambda: |-
+            if (x) {
+              id(on_button).press();
+            } else {
+              id(off_button).press();
+            }
+    
 
 # receive incoming IR signals and dump them to log file
 remote_receiver:
@@ -54,6 +67,7 @@ remote_transmitter:
   carrier_duty_percent: 50%
 
 button:
+  # button to turn on AC
   - platform: template
     name: "Power On Button"
     id: on_button
@@ -68,6 +82,7 @@ button:
           address: 0xEF00
           command: 0xFC03
   
+  # button to turn off AC
   - platform: template
     name: "Power Off Button"
     id: off_button
