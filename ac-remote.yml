@@ -91,6 +91,7 @@ remote_transmitter:
   pin:
     number: GPIO32
   carrier_duty_percent: 50%
+  id: my_transmitter
 
 button:
   # button to turn on AC
@@ -99,15 +100,28 @@ button:
     icon: "mdi:play"
     id: on_button
     on_press:
-      - logger.log: "AC turned on :)"
-      - remote_transmitter.transmit_pronto:
-          data: "0000 006D 0022 0000 0161 00AD 0017 0015 0017 0016 0016 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 003F 0017 003F 0017 003F 0017 003F 0017 0015 0017 0040 0016 003F 0017 003F 0017 003F 0017 003F 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 003F 0017 003F 0017 003F 0017 003F 0017 003F 0017 003F 0017 06C3"
-      - remote_transmitter.transmit_lg:
-          data: 0x00F7C03F # power on/off
-          nbits: 32
-      - remote_transmitter.transmit_nec:
-          address: 0xEF00
-          command: 0xFC03
+      - lambda: |-
+          if(id(room_ac).state) {
+            auto call = id(my_transmitter).transmit();
+            esphome::remote_base::ProntoData data = { "0000 006D 0058 0002 0078 0097 004B 0026 0025 004C 004A 004C 004B 0024 0027 0024 0026 0025 0026 004C 004A 004C 0025 0025 0027 0025 004B 0026 0025 0025 0026 0025 0026 0026 0025 0025 0026 0025 0027 0025 0026 0027 0025 0026 0025 0025 0027 0024 0027 0024 0026 0025 0026 0025 0026 0027 0025 0026 0025 004C 004B 0024 0074 0097 004C 0025 0026 004C 004A 004C 004A 0025 0027 0025 0026 0026 0025 004A 004B 004B 0027 0025 0026 0025 004B 0025 0027 0025 0026 0026 0025 002" };
+            esphome::remote_base::ProntoProtocol().encode(call.get_data(), data);
+            call.set_send_times(1);
+            call.perform();
+          }
+          if(id(light_ac).state) {
+            auto call = id(my_transmitter).transmit();
+            esphome::remote_base::ProntoData data = { "0000 006D 0022 0000 0161 00AD 0017 0015 0017 0016 0016 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 003F 0017 003F 0017 003F 0017 003F 0017 0015 0017 0040 0016 003F 0017 003F 0017 003F 0017 003F 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 003F 0017 003F 0017 003F 0017 003F 0017 003F 0017 003F 0017 06C3" };
+            esphome::remote_base::ProntoProtocol().encode(call.get_data(), data);
+            call.set_send_times(1);
+            call.perform();
+          }
+          if(id(living_room_ac).state) {
+            auto call = id(my_transmitter).transmit();
+            esphome::remote_base::CoolixData data = { 0xB2BF20 };
+            esphome::remote_base::CoolixProtocol().encode(call.get_data(), data);
+            call.set_send_times(1);
+            call.perform();
+          }
   
   # button to turn off AC
   - platform: template
@@ -115,13 +129,42 @@ button:
     icon: "mdi:pause-box-outline"
     id: off_button
     on_press:
-      - logger.log: "AC turned off :)"
-      - remote_transmitter.transmit_pronto:
-          data: "0000 006D 0022 0000 0164 00AD 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 003F 0017 003F 0017 003F 0017 003F 0017 0015 0017 003F 0018 003F 0017 003F 0017 0015 0017 003F 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 003F 0017 0015 0017 003F 0017 003F 0017 003F 0017 003F 0017 003F 0017 003F 0017 06C3"
-      - remote_transmitter.transmit_lg:
-          data: 0x00F740BF # power on/off
-          nbits: 32
-      - remote_transmitter.transmit_nec:
-          address: 0xEF00
-          command: 0xFD02
+      - lambda: |-
+          if(id(room_ac).state) {
+            auto call = id(my_transmitter).transmit();
+            esphome::remote_base::ProntoData data = { "0000 006D 0058 0002 0078 0097 004B 0026 0025 004C 004A 004C 004B 0024 0027 0024 0026 0025 0026 004C 004A 004C 0025 0025 0027 0025 004B 0026 0025 0025 0026 0025 0026 0026 0025 0025 0026 0025 0027 0025 0026 0027 0025 0026 0025 0025 0027 0024 0027 0024 0026 0025 0026 0025 0026 0027 0025 0026 0025 004C 004B 0024 0074 0097 004C 0025 0026 004C 004A 004C 004A 0025 0027 0025 0026 0026 0025 004A 004B 004B 0027 0025 0026 0025 004B 0025 0027 0025 0026 0026 0025 002" };
+            esphome::remote_base::ProntoProtocol().encode(call.get_data(), data);
+            call.set_send_times(1);
+            call.perform();
+          }
+          if(id(light_ac).state) {
+            auto call = id(my_transmitter).transmit();
+            esphome::remote_base::ProntoData data = { "0000 006D 0022 0000 0164 00AD 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 003F 0017 003F 0017 003F 0017 003F 0017 0015 0017 003F 0018 003F 0017 003F 0017 0015 0017 003F 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 003F 0017 0015 0017 003F 0017 003F 0017 003F 0017 003F 0017 003F 0017 003F 0017 06C3" };
+            esphome::remote_base::ProntoProtocol().encode(call.get_data(), data);
+            call.set_send_times(1);
+            call.perform();
+          }
+          if(id(living_room_ac).state) {
+            auto call = id(my_transmitter).transmit();
+            esphome::remote_base::CoolixData data = { 0xB27BE0 };
+            esphome::remote_base::CoolixProtocol().encode(call.get_data(), data);
+            call.set_send_times(1);
+            call.perform();
+          }
+          
+switch:
+  - platform: template
+    name: "Room AC"
+    id: room_ac
+    optimistic: true
+
+  - platform: template
+    name: "Light Simulator"
+    id: light_ac
+    optimistic: true
+
+  - platform: template
+    name: "Living Room AC"
+    id: living_room_ac
+    optimistic: true
           
