@@ -28,6 +28,14 @@ wifi:
 
 captive_portal:
 
+globals:
+  - id: turn_off_tmp
+    type: int
+    restore_value: yes
+    initial_value: '22'
+
+
+
 # sets up the ble stack on the device and listens for available devices
 esp32_ble_tracker:
 
@@ -57,26 +65,45 @@ sensor:
     temperature:
       name: "Room Temperature"
       id: room_tmp
-      on_value_range:
+      on_raw_value:
+        then:
+          # Automation to turn AC on/off
+          # Turn the AC on if current temp higher than user input
+          # Turn the AC off if current temp lower than user input
+          - lambda: |-
+              if(id("Turn AC on tmp") <= x) {
+                id(on_button).press();
+              }
+              if(id("Turn AC off tmp") > x) {
+                id(off_button).press();
+              }
+      #on_value_range:
         # if tmp is above 27 and i'm home turn ac on
-        - above: 27.0
-          then:
-            - lambda: |-
-                if(id(phone_tracker).state) {
-                  id(on_button).press();
-                }
+      #  - above: 27.0
+      #    then:
+      #      - lambda: |-
+      #          if(id(phone_tracker).state) {
+      #            id(on_button).press();
+      #          }
         # if tmp is below 26 and i'm home turn ac off
-        - below: 26.0
-          then:
-            - lambda: |-
-                if(!id(phone_tracker).state) {
-                  id(on_button).press();
-                }
+      #  - below: 26.0
+      #    then:
+      #      - lambda: |-
+      #          if(!id(phone_tracker).state) {
+      #            id(on_button).press();
+      #          }
     humidity:
       name: "Room Humidity"
       id: room_hmd
     update_interval: 60s # update the sensor gui every minute
-    
+
+  - platform: homeassistant
+    name: "Turn AC off tmp"
+    entity_id: input_number.automation_turn_ac_off_tmp
+  
+  - platform: homeassistant
+    name: "Turn AC on tmp"
+    entity_id: input_number.automation_turn_ac_on_tmp
     
 
 # receive incoming IR signals and dump them to log file
@@ -129,6 +156,7 @@ button:
     icon: "mdi:pause-box-outline"
     id: off_button
     on_press:
+      # send IR signals to turn on AC according to the AC type specified by the user
       - lambda: |-
           if(id(room_ac).state) {
             auto call = id(my_transmitter).transmit();
@@ -153,6 +181,8 @@ button:
           }
           
 switch:
+  # these switches are user input that define what types of AC they have
+  # that way we can send the IR signals according to their AC type
   - platform: template
     name: "Room AC"
     id: room_ac
