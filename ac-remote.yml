@@ -28,14 +28,6 @@ wifi:
 
 captive_portal:
 
-globals:
-  - id: turn_off_tmp
-    type: int
-    restore_value: yes
-    initial_value: '22'
-
-
-
 # sets up the ble stack on the device and listens for available devices
 esp32_ble_tracker:
 
@@ -77,26 +69,12 @@ sensor:
               if(id("Turn AC off tmp") > x) {
                 id(off_button).press();
               }
-      #on_value_range:
-        # if tmp is above 27 and i'm home turn ac on
-      #  - above: 27.0
-      #    then:
-      #      - lambda: |-
-      #          if(id(phone_tracker).state) {
-      #            id(on_button).press();
-      #          }
-        # if tmp is below 26 and i'm home turn ac off
-      #  - below: 26.0
-      #    then:
-      #      - lambda: |-
-      #          if(!id(phone_tracker).state) {
-      #            id(on_button).press();
-      #          }
     humidity:
       name: "Room Humidity"
       id: room_hmd
     update_interval: 60s # update the sensor gui every minute
 
+  # sensors that recieves input data from Home Assistant front end
   - platform: homeassistant
     name: "Turn AC off tmp"
     entity_id: input_number.automation_turn_ac_off_tmp
@@ -104,6 +82,11 @@ sensor:
   - platform: homeassistant
     name: "Turn AC on tmp"
     entity_id: input_number.automation_turn_ac_on_tmp
+    
+  # Wi-Fi signal strength sensor. Can help user to diagnos problems
+  - platform: wifi_signal
+    name: "WiFi Signal Sensor"
+    update_interval: 60s
     
 
 # receive incoming IR signals and dump them to log file
