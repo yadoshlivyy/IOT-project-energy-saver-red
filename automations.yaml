@@ -1,0 +1,12 @@
+- id: '6634902365988'
+  alias: Leave Home Notification
+  trigger:
+  - entity_id: binary_sensor.am_i_home
+    platform: state
+    to: 'off'
+  condition: []
+  action:
+    service: telegram_bot.send_message
+    data:
+        title: Your AC was autmatically turned off
+        message: 'Congrats!!! Our automation turned off your AC since we detected that you left your room. You just saved money and reduced air pollution'

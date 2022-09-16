@@ -1,0 +1,18 @@
+
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Text to speech
+tts:
+  - platform: google_translate
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+
+telegram_bot:
+  - platform: polling
+    api_key: !secret telegram_api_token
+    allowed_chat_ids:
+      - !secret telegram_chat_id
