@@ -6,7 +6,10 @@
     to: 'off'
   condition: []
   action:
-    service: telegram_bot.send_message
-    data:
-        title: Your AC was autmatically turned off
-        message: 'Congrats!!! Our automation turned off your AC since we detected that you left your room. You just saved money and reduced air pollution'
+    - service: telegram_bot.send_message
+      data:
+          title: Your AC was autmatically turned off
+          message: 'Congrats!!! Our automation turned off your AC since we detected that you left your room. You just saved money and reduced air pollution'
+    - service: telegram_bot.send_photo
+      data:
+        url: https://i.postimg.cc/y85K57KT/congrats.png
