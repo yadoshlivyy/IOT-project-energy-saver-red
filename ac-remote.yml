@@ -8,6 +8,8 @@ esp32:
 
 # Enable logging
 logger:
+  level: DEBUG
+  id: ir_logger
 
 # Enable Home Assistant API, use the key to configure connection between device and Home Assistant
 api:
@@ -28,11 +30,19 @@ wifi:
 
 captive_portal:
 
+# here we define global variables
+globals:
+  # this global stores the custom IR code that we recieve during "learning mode"
+  - id: custom_pronto_code
+    type: std::string
+    restore_value: no
+
 # sets up the ble stack on the device and listens for available devices
 esp32_ble_tracker:
 
 binary_sensor:
   # bluetooth presence sensor - presence is based on iBeacon UUID
+  # in the lambda: if bluetooth is detected turn on AC, otherwise turn it off
   - platform: ble_presence
     name: "Am I Home"
     id: phone_tracker
@@ -87,7 +97,6 @@ sensor:
   - platform: wifi_signal
     name: "WiFi Signal Sensor"
     update_interval: 60s
-    
 
 # receive incoming IR signals and dump them to log file
 remote_receiver:
@@ -95,6 +104,15 @@ remote_receiver:
     number: GPIO15
     inverted: true
   dump: all
+  # if we recieve an IR code, check if learn mode is on and if so store the code so that it will be able to be transmitted later
+  # in order to avoid IR noise, store the IR signal only if the pronto code string is longer than 45 characters
+  on_pronto:
+    then:
+      - lambda: |-
+          if(id(learn_mode).state && x.data.length() > 45) {
+            id(custom_pronto_code) = std::string(x.data.c_str());
+            ESP_LOGD("custom", "saved new IR code to custom: %s", id(custom_pronto_code).c_str());
+          }
 
 # our IR transmitter
 remote_transmitter:
@@ -110,6 +128,8 @@ button:
     icon: "mdi:play"
     id: on_button
     on_press:
+      # Each AC has a switch, when turning on/off only perform the action for an AC if its switch is turned on
+      # this labmda iterates over all the ACs every time the on/off button is pressed and performs the action only if the AC's switch is turned on
       - lambda: |-
           if(id(room_ac).state) {
             auto call = id(my_transmitter).transmit();
@@ -129,6 +149,13 @@ button:
             auto call = id(my_transmitter).transmit();
             esphome::remote_base::CoolixData data = { 0xB2BF20 };
             esphome::remote_base::CoolixProtocol().encode(call.get_data(), data);
+            call.set_send_times(1);
+            call.perform();
+          }
+          if(id(custom).state) {
+            auto call = id(my_transmitter).transmit();
+            esphome::remote_base::ProntoData data = { id(custom_pronto_code).c_str() };
+            esphome::remote_base::ProntoProtocol().encode(call.get_data(), data);
             call.set_send_times(1);
             call.perform();
           }
@@ -162,6 +189,13 @@ button:
             call.set_send_times(1);
             call.perform();
           }
+          if(id(custom).state) {
+            auto call = id(my_transmitter).transmit();
+            esphome::remote_base::ProntoData data = { id(custom_pronto_code).c_str() };
+            esphome::remote_base::ProntoProtocol().encode(call.get_data(), data);
+            call.set_send_times(1);
+            call.perform();
+          }
           
 switch:
   # these switches are user input that define what types of AC they have
@@ -180,4 +214,13 @@ switch:
     name: "Living Room AC"
     id: living_room_ac
     optimistic: true
-          
+    
+  - platform: template
+    name: "Custom"
+    id: custom
+    optimistic: true
+  
+  - platform: template
+    name: "Custom Learn Mode"
+    id: learn_mode
+    optimistic: true
