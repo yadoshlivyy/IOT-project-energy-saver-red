@@ -1,12 +1,14 @@
 # IOT-project-energy-saver-red
 Energy Saver IOT project (Summer 2022)
-
-## Project Story:
-Open source smart remote , that can recieve remote commands and can be used with automations.
 ## Project Links:
   * [Link to Project documentation](https://beautiful-thorn-cdf.notion.site/IOT-Project-Documentation-26e425b2943d4ef78d1500706d3db0ea)
   * [Link to Agile management](https://beautiful-thorn-cdf.notion.site/IOT-Project-Agile-management-7e3c0a345f154c57bb63119a784a9c95)
-
+## Project Files:
+  * ac-remote.yml - FILE EXPLANATION
+  * automations.yaml - FILE EXPLANATION
+  * configuration.yaml - FILE EXPLANATION
+## Project Story:
+Open source smart remote , that can recieve remote commands and can be used with automations.
 ## Project features:
 
 ### Basic features:
