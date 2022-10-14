@@ -59,6 +59,23 @@ binary_sensor:
               id(off_button).press();
             }
 
+number:
+  - platform: template
+    id: turn_off_temperature
+    name: Turn Off Temperature
+    step: 1
+    min_value: 16
+    max_value: 30
+    optimistic: true
+    
+  - platform: template
+    id: turn_on_temperature
+    name: Turn On Temperature
+    step: 1
+    min_value: 16
+    max_value: 30
+    optimistic: true
+
 sensor:
   # temperature and humidity sensor
   - platform: dht
@@ -67,27 +84,32 @@ sensor:
     temperature:
       name: "Room Temperature"
       id: room_tmp
-      on_raw_value:
+      on_value:
         then:
           # Automation to turn AC on/off
           # Turn the AC on if current temp higher than user input
           # Turn the AC off if current temp lower than user input
           - lambda: |-
-              if(id("Turn AC on tmp") <= x) {
+              if((*id(turn_on_temperature)).state < x) {
                 id(on_button).press();
+                ESP_LOGD("custom", "User Tmp: %f", (*id(turn_on_temperature)).state);
+                ESP_LOGD("custom", "Recieved Tmp: %f", x);
               }
-              if(id("Turn AC off tmp") > x) {
+              if((*id(turn_off_temperature)).state > x) {
                 id(off_button).press();
+                ESP_LOGD("custom", "User Tmp: %f", (*id(turn_off_temperature)).state);
+                ESP_LOGD("custom", "Recieved Tmp: %f", x);
               }
     humidity:
       name: "Room Humidity"
       id: room_hmd
-    update_interval: 60s # update the sensor gui every minute
+    update_interval: 5s # update the sensor gui every minute
 
   # sensors that recieves input data from Home Assistant front end
   - platform: homeassistant
     name: "Turn AC off tmp"
     entity_id: input_number.automation_turn_ac_off_tmp
+    id: turn_ac_off
   
   - platform: homeassistant
     name: "Turn AC on tmp"
@@ -140,7 +162,7 @@ button:
           }
           if(id(light_ac).state) {
             auto call = id(my_transmitter).transmit();
-            esphome::remote_base::ProntoData data = { "0000 006D 0022 0000 0161 00AD 0017 0015 0017 0016 0016 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 003F 0017 003F 0017 003F 0017 003F 0017 0015 0017 0040 0016 003F 0017 003F 0017 003F 0017 003F 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 003F 0017 003F 0017 003F 0017 003F 0017 003F 0017 003F 0017 06C3" };
+            esphome::remote_base::ProntoData data = { "0000 006D 0022 0000 0159 00AB 0015 0017 0015 0016 0016 0016 0015 0016 0015 0016 0016 0016 0015 0016 0015 0016 0016 0040 0015 0041 0015 0041 0017 003F 0015 0042 0014 0041 0016 0040 0015 0041 0015 0016 0015 0016 0016 0016 0015 0016 0015 0016 0016 0016 0015 0041 0016 0017 0014 0042 0015 0040 0015 0041 0015 0041 0016 0040 0015 0041 0015 0016 0015 0041 0015 06C3" };
             esphome::remote_base::ProntoProtocol().encode(call.get_data(), data);
             call.set_send_times(1);
             call.perform();
@@ -177,7 +199,7 @@ button:
           }
           if(id(light_ac).state) {
             auto call = id(my_transmitter).transmit();
-            esphome::remote_base::ProntoData data = { "0000 006D 0022 0000 0164 00AD 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 003F 0017 003F 0017 003F 0017 003F 0017 0015 0017 003F 0018 003F 0017 003F 0017 0015 0017 003F 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 0015 0017 003F 0017 0015 0017 003F 0017 003F 0017 003F 0017 003F 0017 003F 0017 003F 0017 06C3" };
+            esphome::remote_base::ProntoData data = { "0000 006D 0022 0000 0158 00AD 0015 0016 0015 0016 0016 0016 0015 0016 0015 0016 0016 0016 0015 0016 0016 0016 0016 0040 0016 0041 0015 0041 0016 0040 0015 0041 0015 0041 0016 0040 0015 0041 0015 0017 0015 0016 0016 0016 0015 0016 0015 0016 0016 0016 0015 0041 0016 0016 0015 0041 0016 0040 0015 0041 0015 0041 0016 0040 0015 0041 0015 0016 0015 0041 0015 06C3" };
             esphome::remote_base::ProntoProtocol().encode(call.get_data(), data);
             call.set_send_times(1);
             call.perform();
