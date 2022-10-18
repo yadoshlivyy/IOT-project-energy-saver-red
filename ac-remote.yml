@@ -1,5 +1,5 @@
 esphome:
-  name: ac-remote
+  name: smart-ac-receiver
 
 esp32:
   board: esp32dev
@@ -8,16 +8,14 @@ esp32:
 
 # Enable logging
 logger:
-  level: DEBUG
-  id: ir_logger
 
-# Enable Home Assistant API, use the key to configure connection between device and Home Assistant
+# Enable Home Assistant API
 api:
   encryption:
-    key: "1KMEt//8JQxaEtboIP50bbRrwcPWuKW7ux6aJUfaclE="
+    key: "dyazDNsqiACdDHORRQ2hJ8foObk3+uxjJeGrKNlu6nM="
 
 ota:
-  password: "08fe0b48811d372c75716ce35e1f8bf8"
+  password: "f879519e7f883d3c24426bb90140bd14"
 
 wifi:
   ssid: !secret wifi_ssid
@@ -25,8 +23,8 @@ wifi:
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
-    ssid: "Ac-Remote Fallback Hotspot"
-    password: "fADey9cQ9KfM"
+    ssid: "Smart-Ac-Receiver"
+    password: "c45XAVVUtdGZ"
 
 captive_portal:
 
@@ -36,6 +34,23 @@ globals:
   - id: custom_pronto_code
     type: std::string
     restore_value: no
+    initial_value: '""'
+
+  - id: ir_product_active
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  - id: test_mode_state
+    type: std::string
+    restore_value: no
+    initial_value: '"not_tested"'
+  
+  - id: learning_mode_state
+    type: std::string
+    restore_value: no
+    initial_value: '"init"'
+
 
 # sets up the ble stack on the device and listens for available devices
 esp32_ble_tracker:
@@ -58,12 +73,22 @@ binary_sensor:
             } else {
               id(off_button).press();
             }
+  - platform: template
+    name: "status"
+    id: ir_state
+    lambda: |-
+      if ((id(ir_product_active))) {
+        return true;
+      } else {
+        return false;
+      }
+
 
 number:
   - platform: template
     id: turn_off_temperature
     name: Turn Off Temperature
-    step: 1
+    step: 0.1
     min_value: 16
     max_value: 30
     optimistic: true
@@ -71,10 +96,11 @@ number:
   - platform: template
     id: turn_on_temperature
     name: Turn On Temperature
-    step: 1
+    step: 0.1
     min_value: 16
     max_value: 30
     optimistic: true
+    initial_value: 30
 
 sensor:
   # temperature and humidity sensor
@@ -90,15 +116,17 @@ sensor:
           # Turn the AC on if current temp higher than user input
           # Turn the AC off if current temp lower than user input
           - lambda: |-
-              if((*id(turn_on_temperature)).state < x) {
+              if((*id(turn_on_temperature)).state < x && id(ir_product_active)==false) {
                 id(on_button).press();
                 ESP_LOGD("custom", "User Tmp: %f", (*id(turn_on_temperature)).state);
                 ESP_LOGD("custom", "Recieved Tmp: %f", x);
+                id(ir_product_active) = true;
               }
-              if((*id(turn_off_temperature)).state > x) {
+              if((*id(turn_off_temperature)).state > x && id(ir_product_active)==true) {
                 id(off_button).press();
                 ESP_LOGD("custom", "User Tmp: %f", (*id(turn_off_temperature)).state);
                 ESP_LOGD("custom", "Recieved Tmp: %f", x);
+                id(ir_product_active) = false;
               }
     humidity:
       name: "Room Humidity"
@@ -120,10 +148,63 @@ sensor:
     name: "WiFi Signal Sensor"
     update_interval: 60s
 
+text_sensor:
+  - platform: template
+    id: remote_receiver_state
+    name: "Remote Receiver state "
+    lambda: |-
+      if(id(test_mode_state)=="not_tested"){
+        return {"Not Tested"};
+      }
+      else if (id(test_mode_state)=="testing"){
+        return {"Testing"};
+      }
+      else if (id(test_mode_state)=="testing_ok"){
+        return {"OK"};
+      }
+      else {
+        return{"Error"};
+      }
+    update_interval: 5s
+  - platform: template
+    id: remote_transmitter_state
+    name: "Remote Transmitter state "
+    lambda: |-
+      if(id(test_mode_state)=="not_tested"){
+        return {"Not Tested"};
+      }
+      else if (id(test_mode_state)=="testing"){
+        return {"Testing"};
+      }
+      else if (id(test_mode_state)=="testing_ok"){
+        return {"OK"};
+      }
+      else {
+        return{"Error"};
+      }
+    update_interval: 5s
+  - platform: template
+    id: learning_mode_sensor
+    name: "Learning mode state"
+    lambda: |-
+      if(id(learning_mode_state)=="init"){
+        return {"press Save Custom IR  button"};
+      }
+      else if (id(learning_mode_state)=="ready"){
+        return {"send new IR signal to IR Receiver"};
+      }
+      else if (id(learning_mode_state)=="signal_saved"){
+        //return {std::string("saved new IR code : ") + id(custom_pronto_code).c_str()};
+        return{"new signal saved"};
+      }
+      else {
+        return{"Error"};
+      }
+    update_interval: 3s
 # receive incoming IR signals and dump them to log file
 remote_receiver:
   pin: 
-    number: GPIO15
+    number: GPIO23
     inverted: true
   dump: all
   # if we recieve an IR code, check if learn mode is on and if so store the code so that it will be able to be transmitted later
@@ -131,9 +212,15 @@ remote_receiver:
   on_pronto:
     then:
       - lambda: |-
-          if(id(learn_mode).state && x.data.length() > 45) {
+          if(id(learning_mode_state)=="ready" && x.data.length() > 45) {
             id(custom_pronto_code) = std::string(x.data.c_str());
             ESP_LOGD("custom", "saved new IR code to custom: %s", id(custom_pronto_code).c_str());
+            id(learning_mode_state)="signal_saved";
+          }
+          else if(id(test_mode_state)=="testing"){
+            ESP_LOGD("custom", "test code recieved: %s", x.data.c_str());
+            id(test_mode_state)="testing_ok";
+            
           }
 
 # our IR transmitter
@@ -159,6 +246,7 @@ button:
             esphome::remote_base::ProntoProtocol().encode(call.get_data(), data);
             call.set_send_times(1);
             call.perform();
+            id(ir_product_active) = true;
           }
           if(id(light_ac).state) {
             auto call = id(my_transmitter).transmit();
@@ -166,6 +254,9 @@ button:
             esphome::remote_base::ProntoProtocol().encode(call.get_data(), data);
             call.set_send_times(1);
             call.perform();
+            id(ir_product_active) = true;
+
+           
           }
           if(id(living_room_ac).state) {
             auto call = id(my_transmitter).transmit();
@@ -173,6 +264,7 @@ button:
             esphome::remote_base::CoolixProtocol().encode(call.get_data(), data);
             call.set_send_times(1);
             call.perform();
+            id(ir_product_active) = true;
           }
           if(id(custom).state) {
             auto call = id(my_transmitter).transmit();
@@ -180,6 +272,7 @@ button:
             esphome::remote_base::ProntoProtocol().encode(call.get_data(), data);
             call.set_send_times(1);
             call.perform();
+            id(ir_product_active) = true;
           }
   
   # button to turn off AC
@@ -196,6 +289,7 @@ button:
             esphome::remote_base::ProntoProtocol().encode(call.get_data(), data);
             call.set_send_times(1);
             call.perform();
+            id(ir_product_active) = false;
           }
           if(id(light_ac).state) {
             auto call = id(my_transmitter).transmit();
@@ -203,22 +297,50 @@ button:
             esphome::remote_base::ProntoProtocol().encode(call.get_data(), data);
             call.set_send_times(1);
             call.perform();
+            id(ir_product_active) = false;
+          
           }
           if(id(living_room_ac).state) {
             auto call = id(my_transmitter).transmit();
             esphome::remote_base::CoolixData data = { 0xB27BE0 };
             esphome::remote_base::CoolixProtocol().encode(call.get_data(), data);
             call.set_send_times(1);
-            call.perform();
+            id(ir_product_active) = false;
           }
           if(id(custom).state) {
             auto call = id(my_transmitter).transmit();
             esphome::remote_base::ProntoData data = { id(custom_pronto_code).c_str() };
             esphome::remote_base::ProntoProtocol().encode(call.get_data(), data);
             call.set_send_times(1);
-            call.perform();
+            id(ir_product_active) = false;
           }
-          
+  - platform: template
+    name: "Test Remote sensors"
+    id: test_remote_button
+    on_press:
+      then:
+        - globals.set:
+            id: test_mode_state
+            value: '"testing"'
+        - remote_transmitter.transmit_pronto:
+            data: "0000 006D 0022 0000 015A 00AA 0017 0015 0015 0016 0015 0016 0017 0015 0015 0016 0015 0016 0017 0016 0014 0016 0015 0041 0015 0041 0017 003F 0017 0040 0015 0041 0017 003F 0017 0040 0016 0040 0017 0015 0016 0014 0017 0040 0015 0016 0015 0042 0014 0016 0015 0016 0017 0015 0015 0041 0017 003F 0015 0016 0017 003F 0015 0016 0017 003F 0015 0041 0015 0041 0017 06C3"
+  - platform: template
+    id: save_custom_ir
+    name: "Save Custom IR signal"
+    on_press:
+      then:
+        - globals.set:
+            id: learning_mode_state
+            value: '"ready"'
+  - platform: template
+    id: learning_mode_reset
+    name: "Reset custom IR"
+    on_press:
+      then:
+        - globals.set:
+            id: learning_mode_state
+            value: '"init"'
+
 switch:
   # these switches are user input that define what types of AC they have
   # that way we can send the IR signals according to their AC type
